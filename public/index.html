@@ -15,17 +15,27 @@
                 <h1 style="color:#38bdf8; letter-spacing: 5px;">RUMMIKUB</h1>
                 <input type="text" id="nickname" placeholder="輸入暱稱" maxlength="10">
                 <div class="room-options glass-panel" style="margin-bottom:1rem; padding:15px;">
-                    <p>遊玩人數</p>
-                    <div style="display:flex; justify-content:center; gap:20px; margin-top:10px;">
-                        <label><input type="radio" name="maxPlayers" value="2" checked> 2</label>
-                        <label><input type="radio" name="maxPlayers" value="3"> 3</label>
-                        <label><input type="radio" name="maxPlayers" value="4"> 4</label>
+                    <div style="margin-bottom: 10px;">
+                        <p style="margin:0 0 5px 0;">隱私設定</p>
+                        <div style="display:flex; justify-content:center; gap:20px;">
+                            <label><input type="radio" name="roomPrivacy" value="public" checked> 公開房間</label>
+                            <label><input type="radio" name="roomPrivacy" value="private"> 私密房間</label>
+                        </div>
+                    </div>
+                    <div>
+                        <p style="margin:0 0 5px 0;">遊玩人數</p>
+                        <div style="display:flex; justify-content:center; gap:20px;">
+                            <label><input type="radio" name="maxPlayers" value="2" checked> 2</label>
+                            <label><input type="radio" name="maxPlayers" value="3"> 3</label>
+                            <label><input type="radio" name="maxPlayers" value="4"> 4</label>
+                        </div>
                     </div>
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                     <button id="createBtn" style="background:#38bdf8; color:#0f172a;">創建房間</button>
-                    <button id="quickJoinBtn" style="background:rgba(255,255,255,0.1); color:white;">隨機加入</button>
+                    <button id="quickJoinBtn" style="background:rgba(255,255,255,0.1); color:white;">馬上隨機加入</button>
                 </div>
+                <button id="rejoinRoomBtn" style="width:100%; display:none; background:#ef4444; color:white; padding:10px; margin-top:10px; border-radius:4px;">返回斷線前房間</button>
                 <div style="margin-top:10px; display:flex; gap:5px;">
                     <input type="text" id="roomIdInput" placeholder="代碼" style="flex:1; padding:8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:4px;">
                     <button id="joinBtn" style="background:#334155; color:white;">加入</button>

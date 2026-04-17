@@ -129,29 +129,56 @@ function calculateSetScore(set) {
 }
 
 io.on('connection', (socket) => {
+    socket.on('checkRoomStatus', (data) => {
+        const room = rooms.get(data.roomId);
+        if (room && room.players.find(p => p.playerId === data.playerId)) {
+            socket.emit('roomStatusValid');
+        } else {
+            socket.emit('roomStatusInvalid');
+        }
+    });
+
     socket.on('join', (data) => {
         const { nickname, roomId, playerId, action } = data;
         const finalPlayerId = playerId || `p-${socket.id}`;
         let roomCode = roomId && action !== 'create' ? roomId.toUpperCase() : null;
+
+        if (action === 'create' || action === 'random' || action === 'quickJoin') {
+            for (const [rCode, rData] of rooms.entries()) {
+                const ghost = rData.players.find(p => p.playerId === finalPlayerId);
+                if (ghost) {
+                    ghost.isBot = true;
+                    ghost.online = true;
+                    io.to(rCode).emit('roomUpdate', {
+                        roomCode: rCode, maxPlayers: rData.maxPlayers, players: rData.players.map(p => ({
+                            nickname: p.nickname, isHost: p.isHost, cardCount: p.hand ? p.hand.length : 0, online: p.online, isBot: p.isBot
+                        })), gameStarted: rData.gameStarted
+                    });
+                }
+            }
+        }
         
-        if (action === 'create') roomCode = generateRoomId();
-        else if (action === 'random') {
-            const availableRooms = Array.from(rooms.values()).filter(r => r.players.length < r.maxPlayers && !r.gameStarted && !r.players.find(p => p.playerId === finalPlayerId));
-            roomCode = availableRooms.length > 0 ? availableRooms[0].id : generateRoomId();
+        if (action === 'create') {
+            roomCode = generateRoomId();
+        } else if (action === 'random' || action === 'quickJoin') {
+            const tempM = parseInt(data.maxPlayers) || 4;
+            const availableRooms = Array.from(rooms.values()).filter(r => r.maxPlayers === tempM && !r.isPrivate && r.players.length < r.maxPlayers && !r.gameStarted && !r.players.find(p => p.playerId === finalPlayerId));
+            roomCode = availableRooms.length > 0 ? availableRooms[0].id : null;
+            if (!roomCode) return socket.emit('error', '目前沒有公開且人數相符的房間可加入');
         }
 
         if (roomCode && !rooms.has(roomCode)) {
-            if (action === 'rejoin' || action === 'specific') {
+            if (action === 'rejoin' || action === 'specific' || action === 'join') {
                 return socket.emit('error', '房間不存在或已解散');
             }
             rooms.set(roomCode, {
-                id: roomCode, players: [], maxPlayers: parseInt(data.maxPlayers) || 4,
+                id: roomCode, isPrivate: data.isPrivate || false, players: [], maxPlayers: parseInt(data.maxPlayers) || 4,
                 gameStarted: false, deck: createDeck(), board: [], turn: 0,
                 chatHistory: [], isFinalRound: false, finalRoundTurns: 0
             });
         }
         else if (!roomCode) {
-            return socket.emit('error', '房間不合法');
+            return socket.emit('error', '房間代碼不合法');
         }
 
         const room = rooms.get(roomCode);
@@ -180,6 +207,14 @@ io.on('connection', (socket) => {
             gameStarted: room.gameStarted, myId: finalPlayerId
         });
         socket.emit('joined', { roomCode, playerId: finalPlayerId, chatHistory: room.chatHistory });
+        
+        if (existingPlayer && room.gameStarted) {
+            socket.emit('gameStart', {
+                hand: existingPlayer.hand, board: room.board,
+                players: room.players.map(pl => ({ nickname: pl.nickname, cardCount: pl.hand.length, isBot: pl.isBot, online: pl.online, isFinished: pl.isFinished, rank: pl.rank, isHost: pl.isHost })),
+                turnPlayer: room.players[room.turn].nickname, deckCount: room.deck.length
+            });
+        }
     });
 
     socket.on('chat', (message) => {
@@ -279,6 +314,17 @@ io.on('connection', (socket) => {
     }
 
     function updateTurnAndNotify(room, message = '') {
+        if (room.isFinalRound && room.gameStarted) {
+            room.finalRoundTurns++;
+            if (room.finalRoundTurns >= room.players.length) {
+                room.gameStarted = false;
+                const sortedPlayers = [...room.players].sort((a,b) => a.hand.length - b.hand.length);
+                io.to(room.id).emit('chat', { sender: '系統公告', message: `⚠️ 遊戲結束 (宣告流局)！`, icon: '📢' });
+                io.to(room.id).emit('gameOver', { winner: sortedPlayers[0].nickname, allScores: sortedPlayers.map(p => ({ nickname: p.nickname, cardCount: p.hand.length })) });
+                return;
+            }
+        }
+
         let nextTurn = (room.turn + 1) % room.players.length;
         let skip = 0;
         while (room.players[nextTurn].isFinished && skip < room.players.length) {
@@ -477,16 +523,6 @@ io.on('connection', (socket) => {
         if (room.deck.length === 0 && !room.isFinalRound) {
             room.isFinalRound = true; room.finalRoundTurns = 0;
             io.to(room.id).emit('chat', { sender: '系統公告', message: '⚠️ 牌堆已空，對局進入最後一輪！', icon: '📢' });
-        }
-        if (room.isFinalRound) {
-            room.finalRoundTurns++;
-            if (room.finalRoundTurns >= room.players.length) {
-                room.gameStarted = false;
-                const sortedPlayers = [...room.players].sort((a,b) => a.hand.length - b.hand.length);
-                io.to(room.id).emit('chat', { sender: '系統公告', message: `⚠️ 遊戲結束 (宣告流局)！`, icon: '📢' });
-                io.to(room.id).emit('gameOver', { winner: sortedPlayers[0].nickname, allScores: sortedPlayers.map(p => ({ nickname: p.nickname, cardCount: p.hand.length })) });
-                return;
-            }
         }
         updateTurnAndNotify(room, msg);
     }

@@ -53,7 +53,8 @@ function joinGame(roomId, action) {
     if (!nick && action !== 'rejoin') return alert('請輸入暱稱');
     if (nick) state.nickname = nick;
     const maxP = document.querySelector('input[name="maxPlayers"]:checked') ? document.querySelector('input[name="maxPlayers"]:checked').value : 4;
-    socket.emit('join', { nickname: state.nickname, roomId, playerId: state.playerId, maxPlayers: maxP, action });
+    const isPriv = document.querySelector('input[name="roomPrivacy"]:checked') ? (document.querySelector('input[name="roomPrivacy"]:checked').value === 'private') : false;
+    socket.emit('join', { nickname: state.nickname, roomId, playerId: state.playerId, maxPlayers: maxP, isPrivate: isPriv, action });
 }
 
 socket.on('joined', (data) => {
@@ -72,7 +73,12 @@ const savedName = localStorage.getItem('rummikub_nickname');
 if (savedName) document.getElementById('nickname').value = savedName;
 const savedPlayerId = localStorage.getItem('rummikub_playerId');
 const savedRoomId = localStorage.getItem('rummikub_roomId');
+
 if (savedPlayerId && savedRoomId) {
+    socket.emit('checkRoomStatus', { roomId: savedRoomId, playerId: savedPlayerId });
+}
+
+socket.on('roomStatusValid', () => {
     const rejoinBtn = document.getElementById('rejoinRoomBtn');
     if (rejoinBtn) {
         rejoinBtn.style.display = 'block';
@@ -82,11 +88,16 @@ if (savedPlayerId && savedRoomId) {
             joinGame(savedRoomId, 'rejoin');
         };
     }
-}
+});
+
+socket.on('roomStatusInvalid', () => {
+    localStorage.removeItem('rummikub_roomId');
+});
 
 socket.on('roomUpdate', (data) => {
     state.players = data.players || [];
     state.gameStarted = data.gameStarted;
+    state.maxPlayers = data.maxPlayers || 4;
     
     const me = state.players.find(p => p.nickname === state.nickname);
     if (!state.gameStarted && me) {
@@ -134,6 +145,15 @@ socket.on('countdownUpdate', (data) => {
 
 socket.on('gameStart', (data) => {
     document.getElementById('modal-gameover').style.display = 'none';
+    
+    // 恢復互動按鈕
+    ['autoPlayBtn', 'finishBtn', 'undoBtn', 'sortByColor', 'sortByNum'].forEach(id => {
+        const btn = document.getElementById(id);
+        if(btn) { btn.disabled = false; btn.style.background = ''; btn.style.cursor = 'pointer'; }
+    });
+    const rb = document.getElementById('readyBtn');
+    rb.style.display = 'none';
+
     if (data.players) state.players = data.players;
     state.hand = data.hand;
     state.board = data.board || [];
@@ -312,14 +332,23 @@ deckPile.onclick = () => {
 // --- 其他 ---
 function renderPlayers() {
     playersContainer.innerHTML = '';
-    state.players.forEach(p => {
-        const div = document.createElement('div');
-        div.className = `player-card ${p.nickname === state.turnPlayer ? 'active' : ''} ${p.isFinished ? 'finished' : ''}`;
-        let icon = p.isBot ? '🤖' : (p.isHost ? '👑' : '🐱');
-        if (!p.online) icon = '🔌';
-        div.innerHTML = `<span>${icon}</span><div style="flex:1"><b>${p.nickname}</b></div><span>${p.isFinished? '🏆 NO.'+p.rank : '🎴 '+p.cardCount}</span>`;
-        playersContainer.appendChild(div);
-    });
+    const slots = state.maxPlayers || state.players.length; 
+    for(let i=0; i<slots; i++) {
+        const p = state.players[i];
+        if (p) {
+            const div = document.createElement('div');
+            div.className = `player-card ${p.nickname === state.turnPlayer ? 'active' : ''} ${p.isFinished ? 'finished' : ''}`;
+            let icon = p.isBot ? '🤖' : (p.isHost ? '👑' : '🐱');
+            if (!p.online) icon = '🔌';
+            div.innerHTML = `<span>${icon}</span><div style="flex:1"><b>${p.nickname}</b></div><span>${p.isFinished? '🏆 NO.'+p.rank : '🎴 '+p.cardCount}</span>`;
+            playersContainer.appendChild(div);
+        } else {
+            const div = document.createElement('div');
+            div.className = `player-card`;
+            div.innerHTML = `<span>👤</span><div style="flex:1; color:gray"><b>待加入...</b></div><span>--</span>`;
+            playersContainer.appendChild(div);
+        }
+    }
 }
 
 function appendChat(data) {
@@ -349,6 +378,7 @@ socket.on('tileDrawn', data => {
     renderHand(); 
 });
 socket.on('gameOver', data => {
+    state.gameStarted = false;
     document.getElementById('winStatus').textContent = `優勝者：${data.winner}`;
     
     const me = state.players.find(p => p.nickname === state.nickname);
@@ -360,5 +390,16 @@ socket.on('gameOver', data => {
         playAgainBtn.style.display = 'none';
     }
     
+    ['autoPlayBtn', 'finishBtn', 'undoBtn', 'sortByColor', 'sortByNum'].forEach(id => {
+        const btn = document.getElementById(id);
+        if(btn) { btn.disabled = true; btn.style.background = '#94a3b8'; btn.style.cursor = 'not-allowed'; }
+    });
+    
+    const rb = document.getElementById('readyBtn');
+    rb.style.display = 'inline-block';
+    rb.textContent = '遊戲結束';
+    rb.disabled = true;
+    rb.style.background = '#94a3b8';
+
     document.getElementById('modal-gameover').style.display = 'block';
 });
