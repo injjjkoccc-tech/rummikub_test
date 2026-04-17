@@ -71,15 +71,13 @@ socket.on('roomUpdate', (data) => {
     if (!state.gameStarted && me) {
         readyBtn.style.display = 'inline-block';
         if (me.isHost) {
-            const others = state.players.filter(p => !p.isHost);
-            const allReady = others.length === 0 || others.every(p => p.ready);
-            readyBtn.textContent = '遊戲開始';
-            readyBtn.style.background = allReady ? '#22c55e' : '#94a3b8';
-            readyBtn.disabled = !allReady;
-        } else {
-            readyBtn.textContent = me.ready ? '準備完成' : '準備';
-            readyBtn.style.background = me.ready ? '#f59e0b' : '#22c55e';
+            readyBtn.textContent = '開始倒數';
+            readyBtn.style.background = '#22c55e';
             readyBtn.disabled = false;
+        } else {
+            readyBtn.textContent = '等待房主開始...';
+            readyBtn.style.background = '#94a3b8';
+            readyBtn.disabled = true;
         }
     } else if (state.gameStarted) {
         readyBtn.style.display = 'none';
@@ -92,10 +90,20 @@ socket.on('roomUpdate', (data) => {
 });
 
 readyBtn.onclick = () => {
-    if (!readyBtn.disabled) socket.emit('ready');
+    if (!readyBtn.disabled && readyBtn.textContent === '開始倒數') {
+        socket.emit('startCountdown');
+    }
 };
 
+socket.on('countdownUpdate', (data) => {
+    readyBtn.style.display = 'inline-block';
+    readyBtn.disabled = true;
+    readyBtn.textContent = `倒數 ${data.count} 秒...`;
+    readyBtn.style.background = '#f59e0b';
+});
+
 socket.on('gameStart', (data) => {
+    if (data.players) state.players = data.players;
     state.hand = data.hand;
     state.board = data.board || [];
     state.gameStarted = true;
@@ -112,6 +120,7 @@ socket.on('gameStart', (data) => {
 });
 
 socket.on('turnUpdate', (data) => {
+    if (data.players) state.players = data.players;
     state.board = data.board;
     state.turnPlayer = data.turnPlayer;
     state.myTurn = (state.nickname === state.turnPlayer);
@@ -259,7 +268,7 @@ function renderPlayers() {
     state.players.forEach(p => {
         const div = document.createElement('div');
         div.className = `player-card ${p.nickname === state.turnPlayer ? 'active' : ''} ${p.isFinished ? 'finished' : ''}`;
-        let icon = p.isBot ? '🤖' : (p.isHost ? '👑' : '👤');
+        let icon = p.isBot ? '🤖' : (p.isHost ? '👑' : '🐱');
         div.innerHTML = `<span>${icon}</span><div style="flex:1"><b>${p.nickname}</b></div><span>${p.isFinished? '🏆 NO.'+p.rank : '🎴 '+p.cardCount}</span>`;
         playersContainer.appendChild(div);
     });
@@ -269,7 +278,8 @@ function appendChat(data) {
     const div = document.createElement('div');
     div.className = 'msg-row';
     const s = data.sender || data.nickname || '玩家';
-    div.innerHTML = `<span class="msg-sender">${s}:</span><span>${data.message}</span>`;
+    const icon = data.icon ? data.icon + ' ' : '';
+    div.innerHTML = `<span class="msg-sender">${icon}${s}:</span><span>${data.message}</span>`;
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
