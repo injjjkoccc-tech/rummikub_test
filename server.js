@@ -162,7 +162,7 @@ io.on('connection', (socket) => {
             roomCode = generateRoomId();
         } else if (action === 'random' || action === 'quickJoin') {
             const tempM = parseInt(data.maxPlayers) || 4;
-            const availableRooms = Array.from(rooms.values()).filter(r => r.maxPlayers === tempM && !r.isPrivate && r.players.length < r.maxPlayers && !r.gameStarted && !r.players.find(p => p.playerId === finalPlayerId));
+            const availableRooms = Array.from(rooms.values()).filter(r => r.maxPlayers === tempM && !r.isPrivate && r.players.length < r.maxPlayers && !r.gameStarted && !r.players.find(p => p.playerId === finalPlayerId) && r.players.some(px => px.online && !px.isBot));
             roomCode = availableRooms.length > 0 ? availableRooms[0].id : null;
             if (!roomCode) return socket.emit('error', '目前沒有公開且人數相符的房間可加入');
         }
@@ -536,6 +536,19 @@ io.on('connection', (socket) => {
     socket.on('leave', () => handleDisconnect(socket));
     socket.on('disconnect', () => handleDisconnect(socket));
 
+    socket.on('chat', (message) => {
+        const player = players.get(socket.id);
+        if (!player) return;
+        const room = rooms.get(player.roomId);
+        if (room) {
+            const pl = room.players.find(p => p.socketId === socket.id);
+            if (pl) {
+                const icon = pl.isHost ? '👑' : '🌸';
+                io.to(room.id).emit('chat', { nickname: pl.nickname, message, icon });
+            }
+        }
+    });
+
     function handleDisconnect(s) {
         const p = players.get(s.id);
         if (!p) return;
@@ -544,14 +557,18 @@ io.on('connection', (socket) => {
             const pl = room.players.find(x => x.socketId === s.id);
             if (pl) {
                 pl.online = false;
-                if (!room.gameStarted) { 
+                
+                const hasHumanOnline = room.players.some(x => x.online && !x.isBot && x.socketId !== s.id);
+                if (!hasHumanOnline) {
+                    rooms.delete(p.roomId);
+                } else if (!room.gameStarted) { 
                     room.players = room.players.filter(x => x.socketId !== s.id); 
                     if (room.players.length === 0) rooms.delete(p.roomId); 
                     else if (pl.isHost) room.players[0].isHost = true; 
                 }
                 else {
                     io.to(room.id).emit('roomUpdate', {
-                        roomCode: room.id, players: room.players.map(x => ({
+                        roomCode: room.id, maxPlayers: room.maxPlayers, players: room.players.map(x => ({
                             nickname: x.nickname, isHost: x.isHost, cardCount: x.hand ? x.hand.length : 0, online: x.online, isBot: x.isBot
                         })), gameStarted: room.gameStarted
                     });

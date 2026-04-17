@@ -388,13 +388,6 @@ socket.on('gameOver', data => {
     document.getElementById('winStatus').textContent = `優勝者：${data.winner}`;
     
     const me = state.players.find(p => p.nickname === state.nickname);
-    const playAgainBtn = document.getElementById('playAgainBtn');
-    if (me && me.isHost) {
-        playAgainBtn.style.display = 'inline-block';
-        playAgainBtn.onclick = () => socket.emit('restartGame');
-    } else {
-        playAgainBtn.style.display = 'none';
-    }
     
     ['autoPlayBtn', 'finishBtn', 'undoBtn', 'sortByColor', 'sortByNum'].forEach(id => {
         const btn = document.getElementById(id);
@@ -403,9 +396,23 @@ socket.on('gameOver', data => {
     
     const rb = document.getElementById('readyBtn');
     rb.style.display = 'inline-block';
-    rb.textContent = '遊戲結束';
-    rb.disabled = true;
-    rb.style.background = '#94a3b8';
+    
+    if (me && me.isHost) {
+        rb.textContent = '再來一局';
+        rb.disabled = false;
+        rb.style.background = '#22c55e';
+        rb.style.cursor = 'pointer';
+        rb.onclick = () => {
+            document.getElementById('modal-gameover').style.display = 'none';
+            socket.emit('restartGame');
+        };
+    } else {
+        rb.textContent = '遊戲結束';
+        rb.disabled = true;
+        rb.style.background = '#94a3b8';
+        rb.style.cursor = 'not-allowed';
+        rb.onclick = null;
+    }
 
     document.getElementById('modal-gameover').style.display = 'block';
 });
