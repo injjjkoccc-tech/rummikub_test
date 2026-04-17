@@ -147,9 +147,14 @@ socket.on('gameStart', (data) => {
     document.getElementById('modal-gameover').style.display = 'none';
     
     // 恢復互動按鈕
+    const colors = { 'autoPlayBtn': '#f59e0b', 'finishBtn': '#22c55e', 'undoBtn': '#ef4444' };
     ['autoPlayBtn', 'finishBtn', 'undoBtn', 'sortByColor', 'sortByNum'].forEach(id => {
         const btn = document.getElementById(id);
-        if(btn) { btn.disabled = false; btn.style.background = ''; btn.style.cursor = 'pointer'; }
+        if(btn) { 
+            btn.disabled = false; 
+            btn.style.background = colors[id] || ''; 
+            btn.style.cursor = 'pointer'; 
+        }
     });
     const rb = document.getElementById('readyBtn');
     rb.style.display = 'none';
@@ -212,7 +217,7 @@ function renderTile(tile, container, source, setIdx, tileIdx) {
     const el = document.createElement('div');
     el.className = `tile ${tile.color}`;
     el.draggable = state.myTurn;
-    if (tile.color === 'joker') el.innerHTML = `<img src="cat_joker.png" class="joker-img">`;
+    if (tile.color === 'joker') el.innerHTML = '🧋';
     else el.innerHTML = tile.number;
 
     el.ondragstart = (e) => {
@@ -322,6 +327,7 @@ autoPlayBtn.onclick = () => socket.emit('autoPlayRequest');
 
 const deckPile = document.getElementById('deckPile');
 deckPile.onclick = () => {
+    if (!state.gameStarted) return;
     if (!state.myTurn) return alert('不是您的回合！');
     if (state.tempTiles.length > 0 || JSON.stringify(state.board) !== JSON.stringify(state.history[0].board)) {
         return alert('您已經移動了桌面上的牌，須按「還原回合」或「確定出牌」！');
@@ -338,7 +344,7 @@ function renderPlayers() {
         if (p) {
             const div = document.createElement('div');
             div.className = `player-card ${p.nickname === state.turnPlayer ? 'active' : ''} ${p.isFinished ? 'finished' : ''}`;
-            let icon = p.isBot ? '🤖' : (p.isHost ? '👑' : '🐱');
+            let icon = p.isBot ? '🤖' : (p.isHost ? '👑' : '🌸');
             if (!p.online) icon = '🔌';
             div.innerHTML = `<span>${icon}</span><div style="flex:1"><b>${p.nickname}</b></div><span>${p.isFinished? '🏆 NO.'+p.rank : '🎴 '+p.cardCount}</span>`;
             playersContainer.appendChild(div);

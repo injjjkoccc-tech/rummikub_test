@@ -70,9 +70,15 @@
                         <div id="playersContainer" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
                         <div class="deck-area glass-panel" style="padding:15px; text-align:center;">
                             <h4 style="margin-bottom:10px; color:#38bdf8;">公牌疊</h4>
-                            <!-- 剩餘牌堆 -->
-                            <div id="deckPile" class="deck-pile" title="點擊抽牌" style="display: none; position:relative; margin:0 auto; top:0; right:0;">
-                                <span class="deck-count" id="deckCountText">0</span>
+                            <div id="deckPile" class="deck-pile" title="點擊抽牌" style="display: none; position:relative; margin:0 auto; top:0; right:0; cursor:pointer;">
+                                <div style="position:relative; width:45px; height:60px; margin:0 auto 10px auto;">
+                                    <div style="position:absolute; top:0; left:0; width:35px; height:50px; background:white; border:1px solid #ccc; border-radius:4px; box-shadow:1px 1px 3px rgba(0,0,0,0.2);"></div>
+                                    <div style="position:absolute; top:3px; left:4px; width:35px; height:50px; background:white; border:1px solid #ccc; border-radius:4px; box-shadow:1px 1px 3px rgba(0,0,0,0.2);"></div>
+                                    <div style="position:absolute; top:6px; left:8px; width:35px; height:50px; background:white; border:1px solid #ccc; border-radius:4px; box-shadow:1px 1px 3px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center;">
+                                        <span style="color:#d97706; font-size:24px;">🎴</span>
+                                    </div>
+                                </div>
+                                <div style="font-weight:bold; font-size:1.1rem; color:#fff;">剩餘: <span id="deckCountText">0</span></div>
                             </div>
                         </div>
                     </aside>
