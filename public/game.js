@@ -222,7 +222,7 @@ function renderTile(tile, container, source, setIdx, tileIdx) {
     const el = document.createElement('div');
     el.className = `tile ${tile.color}`;
     el.draggable = state.myTurn;
-    if (tile.color === 'joker') el.innerHTML = '🧋';
+    if (tile.color === 'joker') el.innerHTML = '<img src="cat_joker.png" class="joker-img" alt="JOKER">';
     else el.innerHTML = tile.number;
 
     el.ondragstart = (e) => {
@@ -361,7 +361,7 @@ function renderPlayers() {
             const isMe = (p.playerId === state.playerId);
             const nameColor = isMe ? '#38bdf8' : 'white';
             const nameText = isMe ? `${p.nickname} (你)` : p.nickname;
-            div.innerHTML = `<span>${icon}</span><div style="flex:1"><b style="color:${nameColor}">${nameText}</b></div><span>${p.isFinished? '🏆 NO.'+p.rank : '🎴 '+p.cardCount}</span>`;
+            div.innerHTML = `<span>${icon}</span><div style="flex:1"><b style="color:${nameColor}">${nameText}</b></div><span style="display:flex; align-items:center; gap:5px;">${p.isFinished? '🏆 NO.'+p.rank : '<img src="cat_card_back.png" style="width:14px; height:20px; border-radius:2px; box-shadow: 1px 1px 2px rgba(0,0,0,0.5);"> '+p.cardCount}</span>`;
             playersContainer.appendChild(div);
         } else {
             const div = document.createElement('div');
